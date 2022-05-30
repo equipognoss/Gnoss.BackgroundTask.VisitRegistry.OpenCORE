@@ -8,7 +8,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 visitregistry:
-    image: visitregistry
+    image: gnoss/visitregistry
     env_file: .env
     ports:
      - 8145:1745
