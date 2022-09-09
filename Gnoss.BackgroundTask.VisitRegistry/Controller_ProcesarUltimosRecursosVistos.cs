@@ -32,7 +32,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             try
             {
                 Dictionary<Guid, List<Guid>> listaRecursosVisitados = LeerRecursosVisitados();
-
+                loggingService.GuardarLog($"3. Llega peticion de la web");
                 ActualizarRecursosVisitados(listaRecursosVisitados, entityContext, entityContextBASE, loggingService, servicesUtilVirtuosoAndReplication);
             }
             catch (Exception ex)

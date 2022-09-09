@@ -145,10 +145,12 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         private void ProcesarVisitas(Dictionary<Guid, DatosOfflineModel> pDicDatosLinea, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             // Eliminado el código de actualización de virtuoso porque se hacían demasiadas insercciones en virtuoso y los checkpoints tenían que registrar demasiadas transacciones, por lo que costaban mucho tiempo y se podía perder información.
+            loggingService.GuardarLog("2. ProcesarVisitas");
             foreach (Guid documentoID in pDicDatosLinea.Keys)
             {
                 try
                 {
+                    loggingService.GuardarLog($"2.x EncolarRabbit. Clave {documentoID}");
                     // Actualizar en BBDD la fecha de la última visita en el recurso.
                     ActualizarFechaUltimaVisitaDocumento(documentoID, pDicDatosLinea[documentoID].BaseRecursosID, pDicDatosLinea[documentoID].Fecha, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
 
@@ -226,10 +228,11 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         {
             List<string> visitas = UtilsServicioUDP.LeerFichero(TempFile);
             Dictionary<Guid, DatosOfflineModel> dicDatosOffline = new Dictionary<Guid, DatosOfflineModel>();
-
+            loggingService.GuardarLog($"1. ObtenerListaDatosLinea. Ruta fichero temporal {TempFile} Existe {File.Exists(TempFile)}");
             char[] separator = { '|' };
             foreach (string visita in visitas)
             {
+                loggingService.GuardarLog($"1.x Visita {visita}");
                 try
                 {
                     Guid documentoID = Guid.Empty;
