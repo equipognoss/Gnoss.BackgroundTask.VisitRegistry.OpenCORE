@@ -2,6 +2,8 @@
 
 # Gnoss.BackgroundTask.VisitRegistry.OpenCORE
 
+![](https://github.com/equipognoss/Gnoss.BackgroundTask.VisitRegistry.OpenCORE/workflows/BuildVisitRegistry/badge.svg)
+
 Aplicación de segundo plano que expone un puerto UDP, al que la Web le envía las visitas a cada recurso. Este servicio se encarga de agruparlas y enviarlas cada poco tiempo al servicio Visit Cluster para que las contabilice en base de datos.
 
 Configuración estandar de esta aplicación en el archivo docker-compose.yml: 
