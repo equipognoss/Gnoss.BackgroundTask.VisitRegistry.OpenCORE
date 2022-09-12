@@ -10,7 +10,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 visitregistry:
-    image: gnoss/visitregistry
+    image: gnoss/gnoss.backgroundtask.visitregistry.opencore
     env_file: .env
     ports:
      - 8145:1745
