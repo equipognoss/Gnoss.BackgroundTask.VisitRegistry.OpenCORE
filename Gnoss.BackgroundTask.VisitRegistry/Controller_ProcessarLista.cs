@@ -61,7 +61,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         private int mNumLineasHilo = 100;
         private int mNumHilosAbiertos = 5;
-        private int mMinutosAntesProcesar = 5;
+        private int mMinutosAntesProcesar = 1;
 
         private int mPuerto = 0;
 
@@ -136,7 +136,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                     CreaccionDeHilos();
 
                     //Comprueba si se ha terminado algún hilo y arranca el siguiente
-                    ArrancadoDeHilosNuevos(loggingService);
+                    //ArrancadoDeHilosNuevos(loggingService);
 
                     //Comprueba si hay elementos pendientes en la lista compartida con el otro hilo y los escribe en un fichero
                     AgregarFilasNuevas_Fichero(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication);
@@ -303,7 +303,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 string tempName = Path.GetRandomFileName() + "_" + mPuerto;
 
                 File.Move(mDirectorioVisitas + mFicheroVisitas, mDirectorioVisitas + tempName);
-
+                
                 //Crear un Hilo y procesar el fichero temporal independientemente.
                 AbrirHiloYProcesarFichero(mDirectorioVisitas + tempName, "Visitas");
                 mNumSolicitudesVisitas = 0;
@@ -487,8 +487,17 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             procFich.ObjErrorLock = objErrorLock;
             procFich.ObjLineaLock = objLineaLock;
 
-            Task t = new Task(procFich.EmpezarMantenimiento);
-            mTaskList.Add(pFich, t);
+            try
+            {
+                procFich.EmpezarMantenimiento();
+            }
+            catch(Exception ex)
+            {
+                mLoggingService.GuardarLogError(ex.Message);
+            }
+
+            //Task t = new Task(procFich.EmpezarMantenimiento);
+            //mTaskList.Add(pFich, t);
         }
 
 
