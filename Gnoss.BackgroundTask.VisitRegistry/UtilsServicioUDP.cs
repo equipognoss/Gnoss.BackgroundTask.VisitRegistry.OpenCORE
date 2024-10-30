@@ -373,13 +373,17 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             if (AccionLive.VisitaRecurso.Equals(pAccion) && HayConexionRabbit)
             {
-                RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_VISITAS,loggingService, mConfigService, EXCHANGE, COLA_VISITAS);
-                rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
+                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_VISITAS, loggingService, mConfigService, EXCHANGE, COLA_VISITAS))
+                {
+                    rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
+                }                
             }
             else if (HayConexionRabbit)
             {
-                RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_RABBIT, loggingService, mConfigService, EXCHANGE, COLA_RABBIT);
-                rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
+                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_RABBIT, loggingService, mConfigService, EXCHANGE, COLA_RABBIT))
+                {
+                    rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
+                }                 
             }
         }
         /// <summary>
