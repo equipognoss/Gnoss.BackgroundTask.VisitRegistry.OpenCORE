@@ -30,15 +30,24 @@ using Es.Riam.Gnoss.Util.Configuracion;
 using Microsoft.Extensions.DependencyInjection;
 using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.AbstractsOpen;
+using Es.Riam.Interfaces.InterfacesOpen;
+using Es.Riam.Gnoss.ServicioActualizacionOffline.Models;
+using Es.Riam.Gnoss.AD.ServiciosGenerales;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
     class UtilsServicioUDP //: ControladorServicioGnoss
     {
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
         private ConfigService mConfigService;
-        public UtilsServicioUDP(ConfigService configService)
+        public UtilsServicioUDP(ConfigService configService, ILogger<UtilsServicioUDP> logger, ILoggerFactory loggerFactory)
         {
             mConfigService = configService;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         #region Constantes
@@ -62,7 +71,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <returns>Proyecto al que pertenece la identidadID</returns>
         public Guid ObtenerProyectoSeleccionadoID(Guid pIdentidadID, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<IdentidadCN>(), mLoggerFactory);
             Guid proyID = identCN.ObtenerProyectoDeIdentidad(pIdentidadID);
             identCN.Dispose();
             return proyID;
@@ -75,7 +84,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <returns>Base de recursos del proyectoID</returns>
         public Guid ObtenerBaseRecursosID(Guid pProyectoSeleccionadoID, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ProyectoCN proyCN = new ProyectoCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ProyectoCN>(), mLoggerFactory);
             Guid baseRecursosID = proyCN.ObtenerBaseRecursosProyectoPorProyectoID(pProyectoSeleccionadoID);
             proyCN.Dispose();
             return baseRecursosID;
@@ -88,7 +97,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <returns>ID del creador</returns>
         public Guid ObtenerCreadorRecursoID(Guid pDocID, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
             Guid creadorID = docCN.ObtenerCreadorDocumentoID(pDocID);
             docCN.Dispose();
             return creadorID;
@@ -226,7 +235,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         {
             #region Parte1: DocumentoID
 
-            FacetadoCN facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+            FacetadoCN facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCN>(), mLoggerFactory);
             //No se aumenta en 1 el número de recursos que tiene un recurso, no tiene sentido.
             if (!pTipoDato.Equals("recursos"))
             {
@@ -248,7 +257,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                         Thread.Sleep(30 * 1000);
                     }
 
-                    facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                    facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCN>(), mLoggerFactory);
                     facetadoCN.ModificarVotosVisitasComentarios(pProyectoSeleccionadoID.ToString(), pDocID.ToString(), pTipoDato, pNumVisitas);
                 }
                 finally
@@ -265,7 +274,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             listaIdentidad.Add(pCreadorDocID);
 
             //Si no se encuentra la identidad que ha visitado el recurso, falla.
-            IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            IdentidadCN identCN = new IdentidadCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<IdentidadCN>(), mLoggerFactory);
             List<Guid> perfilesList = identCN.ObtenerPerfilesDeIdentidades(listaIdentidad);
 
             //Si no encuentra el perfil de la persona que ha creado el recurso a partir de su identidad puede ser porque sea de pruebas.
@@ -273,7 +282,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             {
                 string perfilcreador = perfilesList[0].ToString();
                 identCN.Dispose();
-                facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCN>(), mLoggerFactory);
 
                 try
                 {
@@ -292,7 +301,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                         Thread.Sleep(30 * 1000);
                     }
 
-                    facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                    facetadoCN = new FacetadoCN(pUrlIntragnoss, pProyectoSeleccionadoID.ToString(), entityContext, loggingService, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCN>(), mLoggerFactory);
                     facetadoCN.ModificarVotosVisitasComentarios(perfilcreador, pDocID.ToString(), pTipoDato, pNumVisitas);
                 }
                 finally
@@ -310,7 +319,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         #region Actualizaciones de la BD Live
 
         /// <summary>
-        /// Añade a la cola de GnossLive un elemento para su procesamiento.
+        /// Añade a la cola de GnossLive varios elementos en una sola conexion para su procesamiento.
         /// </summary>
         /// <param name="pProyectoID">Proyecto al que pertenece el elemento</param>
         /// <param name="pElementoID">Identificador del elemento que se está tratando</param>
@@ -320,28 +329,51 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <param name="pRutaLive"></param>
         /// <param name="pPrioridad">Prioridad</param>
         /// <param name="pInfoExtra">Infomación extra</param>
-        public void ActualizarGnossLive(Guid pProyectoID, Guid pElementoID, AccionLive pAccion, int pTipoElemento, bool pSoloPersonal, string pRutaLiveBase, PrioridadLive pPrioridad, string pInfoExtra, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public void ActualizarGnossLive(List<string> pFilasLiveAInsertar, string pRutaLiveBase, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, IAvailableServices availableServices)
         {
-            LiveCN liveCN = new LiveCN(pRutaLiveBase, entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
-
-            LiveDS liveDS = new LiveDS();
-
-            try
+            if (HayConexionRabbit)
             {
-                InsertarFilaEnColaVisitasRabbitMQ(pProyectoID, pElementoID, pAccion, pTipoElemento, 0, DateTime.Now, pSoloPersonal, (short)pPrioridad,loggingService, pInfoExtra);
-            }
-            catch(Exception ex)
-            {
-                loggingService.GuardarLogError(ex, "Fallo al insertar en Rabbit, insertamos en la base de datos 'BASE', tabla 'cola' o tabla 'ColaVisitas'");
-                liveDS.Cola.AddColaRow(pProyectoID, pElementoID, (int)pAccion, pTipoElemento, 0, DateTime.Now, pSoloPersonal, (short)pPrioridad, pInfoExtra);
-            }
-            
-            //liveDS.ColaHomePerfil.AddColaHomePerfilRow(pProyectoID, pElementoID, (int)pAccion, pTipoElemento, 0, DateTime.Now, (short)pPrioridad);
+                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_VISITAS, loggingService, mConfigService , mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory,EXCHANGE, COLA_VISITAS))
+                {
+                    List<string> mensajesFallidos = (List<string>)rabbitMQ.AgregarElementosACola(pFilasLiveAInsertar);
+                    if (mensajesFallidos.Count > 0)
+                    {
+                        LiveCN liveCN = new LiveCN(pRutaLiveBase, entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<LiveCN>(), mLoggerFactory);
+                        LiveDS liveDS = new LiveDS();
+                        foreach (string mensajeFallido in mensajesFallidos)
+                        {
+                            loggingService.GuardarLogError("Fallo al insertar en Rabbit, insertamos en la base de datos 'BASE', tabla 'cola'",mlogger);
+                            liveDS.Cola.AddColaRow(JsonConvert.DeserializeObject<LiveDS.ColaRow>(mensajeFallido));
+                        }
 
-            liveCN.ActualizarBD(liveDS);
+                        liveCN.ActualizarBD(liveDS);
 
-            liveDS.Dispose();
-            liveCN.Dispose();
+                        liveDS.Dispose();
+                        liveCN.Dispose();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Devuelve un objeto ColaRow serializado listo para enviarlo a Rabbit.
+        /// </summary>
+        /// <param name="pDatosOffline"></param>
+        /// <returns></returns>
+        public string PrepararColaRabbitMQ(DatosOfflineModel pDatosOffline)
+        {
+            LiveDS.ColaRow filaCola = new LiveDS().Cola.NewColaRow();
+            filaCola.ProyectoId = pDatosOffline.ProyectoID;
+            filaCola.Id = pDatosOffline.DocumentoID;
+            filaCola.Accion = (int)AccionLive.VisitaRecurso;
+            filaCola.Tipo = (int)TipoLive.Recurso;
+            filaCola.NumIntentos = 0;
+            filaCola.Fecha = DateTime.Now;
+            filaCola.SoloPersonal = false;
+            filaCola.Prioridad = (int)PrioridadLive.Media;
+            filaCola.InfoExtra = $"{pDatosOffline.BaseRecursosID.ToString()}|NumVisitas={pDatosOffline.NumeroDeVisitas}";
+
+            return JsonConvert.SerializeObject(filaCola.ItemArray);
         }
 
         public bool HayConexionRabbit
@@ -356,7 +388,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
         }
 
-        public void InsertarFilaEnColaVisitasRabbitMQ(Guid pProyectoID, Guid pID, AccionLive pAccion, int pTipo, int pNumIntentos, DateTime pFecha, bool pSoloPersonal, short pPrioridad, LoggingService loggingService, string pInfoExtra = null)
+        public void InsertarFilaEnColaVisitasRabbitMQ(Guid pProyectoID, Guid pID, AccionLive pAccion, int pTipo, int pNumIntentos, DateTime pFecha, bool pSoloPersonal, short pPrioridad, LoggingService loggingService, IAvailableServices availableServices, string pInfoExtra = null)
         {
             LiveDS.ColaRow filaCola = new LiveDS().Cola.NewColaRow();
             filaCola.ProyectoId = pProyectoID;
@@ -371,19 +403,19 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             //AcctionLive.VisitaRecurso
 
-            if (AccionLive.VisitaRecurso.Equals(pAccion) && HayConexionRabbit)
+            if (AccionLive.VisitaRecurso.Equals(pAccion) && HayConexionRabbit && availableServices.CheckIfServiceIsAvailable(availableServices.GetBackServiceCode(BackgroundService.VisitCluster), ServiceType.Background))
             {
-                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_VISITAS, loggingService, mConfigService, EXCHANGE, COLA_VISITAS))
+                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_VISITAS, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_VISITAS))
                 {
                     rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
-                }                
+                }
             }
-            else if (HayConexionRabbit)
+            else if (HayConexionRabbit && availableServices.CheckIfServiceIsAvailable(availableServices.GetBackServiceCode(BackgroundService.Distributor), ServiceType.Background))
             {
-                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_RABBIT, loggingService, mConfigService, EXCHANGE, COLA_RABBIT))
+                using (RabbitMQClient rabbitMQ = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_RABBIT, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_RABBIT))
                 {
                     rabbitMQ.AgregarElementoACola(JsonConvert.SerializeObject(filaCola.ItemArray));
-                }                 
+                }
             }
         }
         /// <summary>
@@ -402,11 +434,11 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             if (!string.IsNullOrEmpty(pFicheroConfiguracionBase))
             {
-                liveCN = new LiveCN(pFicheroConfiguracionBase, entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                liveCN = new LiveCN(pFicheroConfiguracionBase, entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<LiveCN>(), mLoggerFactory);
             }
             else
             {
-                liveCN = new LiveCN("live", entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+                liveCN = new LiveCN("live", entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<LiveCN>(), mLoggerFactory);
             }
 
 
@@ -436,7 +468,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             bool contiene = false;
 
-            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
             bool privado = docCN.EsDocumentoEnProyectoPrivadoEditores(pDocID, pProyID);
 
             if (privado)
@@ -460,13 +492,13 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 string resultado = "";
 
                 //Obtengo los resultados de la caché
-                FacetadoCL facetadoCL = new FacetadoCL(pFicheroConfiguracionBD, pFicheroConfiguracionBD, pUrlIntragnoss, entityContext, loggingService, redisCacheWrapper, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                FacetadoCL facetadoCL = new FacetadoCL(pFicheroConfiguracionBD, pFicheroConfiguracionBD, pUrlIntragnoss, entityContext, loggingService, redisCacheWrapper, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoCL>(), mLoggerFactory);
                 facetadoCL.Dominio = pUrlIntragnoss.Substring(7, pUrlIntragnoss.Length - 8);
-                
+
                 Guid invitadoID = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
                 //URLIntragnoss + "_facetado_facetado_" + ProyID + "_recurso_invitado_es_1"
-                
+
                 //Comprobamos si la identidad que ha realizado la acción tiene una caché especial
                 resultado = facetadoCL.ObtenerResultadosYFacetasDeBusquedaEnProyecto(pProyID, FacetadoAD.TipoBusquedaToString(TipoBusqueda.Recursos), invitadoID, "1", "es", null, true, "", true);
 
@@ -488,7 +520,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected UtilsServicioUDP ClonarControlador()
         {
-            return new UtilsServicioUDP(mConfigService);
+            return new UtilsServicioUDP(mConfigService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
         }
 
         #endregion

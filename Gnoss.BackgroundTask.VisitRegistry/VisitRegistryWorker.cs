@@ -1,3 +1,4 @@
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 using Es.Riam.Gnoss.ServicioActualizacionOffline;
 using Es.Riam.Gnoss.Servicios;
 using Es.Riam.Gnoss.Util.Configuracion;
@@ -15,13 +16,15 @@ namespace Gnoss.BackgroundTask.VisitRegistry
     public class VisitRegistryWorker : Worker
     {
         private volatile Dictionary<int, List<string>> mSocketsList = new Dictionary<int, List<string>>();
-        private readonly ILogger<VisitRegistryWorker> _logger;
         private readonly ConfigService _configService;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
-        public VisitRegistryWorker(ILogger<VisitRegistryWorker> logger, ConfigService configService, IServiceScopeFactory scopeFactory) : base(logger, scopeFactory)
+        public VisitRegistryWorker(ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<VisitRegistryWorker> logger, ILoggerFactory loggerFactory) : base(logger, scopeFactory)
         {
-            _logger = logger;
             _configService = configService;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
 
@@ -36,9 +39,9 @@ namespace Gnoss.BackgroundTask.VisitRegistry
 
             mSocketsList.Add(puerto, new List<string>());
             List<ControladorServicioGnoss> controladores = new List<ControladorServicioGnoss>();
-            controladores.Add(new Controller_UDPListener(mSocketsList[puerto], puerto, ScopedFactory, _configService));
+            controladores.Add(new Controller_UDPListener(mSocketsList[puerto], puerto, ScopedFactory, _configService, mLoggerFactory.CreateLogger<Controller_UDPListener>(), mLoggerFactory));
 
-            controladores.Add(new Controller_ProcessarLista(numVisitasHilo, numHilosAbiertos, minutosAntesProcesar, mSocketsList[puerto], puerto, horasProcesarVisitasVirtuoso, ScopedFactory, _configService));
+            controladores.Add(new Controller_ProcessarLista(numVisitasHilo, numHilosAbiertos, minutosAntesProcesar, mSocketsList[puerto], puerto, horasProcesarVisitasVirtuoso, ScopedFactory, _configService, mLoggerFactory.CreateLogger<Controller_ProcessarLista>(), mLoggerFactory));
 
 
             return controladores;

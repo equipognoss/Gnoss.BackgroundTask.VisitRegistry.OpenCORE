@@ -17,6 +17,8 @@ using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.Elementos.ParametroAplicacion;
 using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
 using Es.Riam.AbstractsOpen;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
+using Microsoft.Extensions.Logging;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
@@ -26,16 +28,20 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         private volatile List<string> mListaSockets;
         private int mPUERTO_UDP_VISITAS;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
         #region Constructores
 
-        public Controller_UDPListener(List<string> pListaSockets, int pPuerto, IServiceScopeFactory serviceScopeFactory, ConfigService configService)
-            : base(serviceScopeFactory, configService)
+        public Controller_UDPListener(List<string> pListaSockets, int pPuerto, IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<Controller_UDPListener> logger, ILoggerFactory loggerFactory)
+            : base(serviceScopeFactory, configService,logger,loggerFactory)
         {
             mListaSockets = pListaSockets;
             mPUERTO_UDP_VISITAS = pPuerto;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         #endregion
@@ -57,8 +63,8 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
             catch (Exception ex)
             {
-                loggingService.GuardarLog("UDPListener ERROR: Obteniendo urlIntragnoss.");
-                loggingService.GuardarLog(ex.Message);
+                loggingService.GuardarLog("UDPListener ERROR: Obteniendo urlIntragnoss.", mlogger);
+                loggingService.GuardarLog(ex.Message, mlogger);
                 throw;
             }
 
@@ -68,7 +74,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             {
                 //Creamos el canal de comunicación por el puerto cargado de configuración
                 ClienteUDP = new UdpClient(mPUERTO_UDP_VISITAS);
-                loggingService.GuardarLog("UDPListener: '" + mFicheroConfiguracionBD + "' Escuchando por el puerto: " + mPUERTO_UDP_VISITAS);
+                loggingService.GuardarLog("UDPListener: '" + mFicheroConfiguracionBD + "' Escuchando por el puerto: " + mPUERTO_UDP_VISITAS, mlogger);
 
                 // Permitimos que más de un cliente escuche en el mismo puerto.
                 ClienteUDP.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -122,7 +128,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                     }
                     catch (Exception ex)
                     {
-                        loggingService.GuardarLog("UDPListener ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace);
+                        loggingService.GuardarLog("UDPListener ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mlogger);
                     }
                 }
 
@@ -145,7 +151,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new Controller_UDPListener(mListaSockets, mPUERTO_UDP_VISITAS, ScopedFactory, mConfigService);
+            return new Controller_UDPListener(mListaSockets, mPUERTO_UDP_VISITAS, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_UDPListener>(), mLoggerFactory);
         }
 
         #endregion

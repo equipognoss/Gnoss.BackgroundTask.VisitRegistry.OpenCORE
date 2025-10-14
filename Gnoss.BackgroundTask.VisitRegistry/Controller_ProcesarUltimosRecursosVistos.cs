@@ -14,16 +14,22 @@ using Es.Riam.Gnoss.Util.General;
 using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.CL;
 using Es.Riam.AbstractsOpen;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
+using Microsoft.Extensions.Logging;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
     public class Controller_ProcesarUltimosRecursosVistos : ControladorServicioGnoss
     {
         List<string> mDocumentosVisitados;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
-        public Controller_ProcesarUltimosRecursosVistos(List<string> pDocumentosVistos, IServiceScopeFactory serviceScopeFactory, ConfigService configService) : base(serviceScopeFactory, configService)
+        public Controller_ProcesarUltimosRecursosVistos(List<string> pDocumentosVistos, IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<Controller_ProcesarUltimosRecursosVistos> logger, ILoggerFactory loggerFactory) : base(serviceScopeFactory, configService, logger, loggerFactory)
         {
             mDocumentosVisitados = pDocumentosVistos;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
@@ -32,12 +38,12 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             try
             {
                 Dictionary<Guid, List<Guid>> listaRecursosVisitados = LeerRecursosVisitados();
-                loggingService.GuardarLog($"3. Llega peticion de la web");
+                loggingService.GuardarLog($"3. Llega peticion de la web",mlogger);
                 ActualizarRecursosVisitados(listaRecursosVisitados, entityContext, entityContextBASE, loggingService, servicesUtilVirtuosoAndReplication);
             }
             catch (Exception ex)
             {
-                loggingService.GuardarLog(ex.Message);
+                loggingService.GuardarLog(ex.Message, mlogger);
             }
         }
 
@@ -76,7 +82,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 List<Guid> listaDocumentosVisitados = pListaDocumentosVisitadosPorProyecto[proyectoID];
 
                 // lee de base de datos los recursos actuales
-                BaseComunidadCN baseComunidadCN = new BaseComunidadCN(entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication);
+                BaseComunidadCN baseComunidadCN = new BaseComunidadCN(entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<BaseComunidadCN>(), mLoggerFactory);
                 List<Guid> listaDocumentos = baseComunidadCN.ObtenerUltimosRecursosVisitadosDeProyecto(proyectoID);
 
                 bool crearNuevaFila = false;
@@ -120,7 +126,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new Controller_ProcesarUltimosRecursosVistos(mDocumentosVisitados, ScopedFactory, mConfigService);
+            return new Controller_ProcesarUltimosRecursosVistos(mDocumentosVisitados, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_ProcesarUltimosRecursosVistos>(), mLoggerFactory);
         }
     }
 }

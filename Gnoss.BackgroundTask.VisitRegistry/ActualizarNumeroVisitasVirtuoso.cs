@@ -18,6 +18,8 @@ using Es.Riam.Gnoss.Elementos.ParametroAplicacion;
 using Es.Riam.Gnoss.AD.ParametroAplicacion;
 using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
 using Es.Riam.AbstractsOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
@@ -26,13 +28,17 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         #region Miembros
 
         private int mNumHorasIntervalo;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
-        public ActualizarNumeroVisitasVirtuoso(int pNumHorasIntervalo, IServiceScopeFactory serviceScopeFactory, ConfigService configService)
-            : base(serviceScopeFactory, configService)
+        public ActualizarNumeroVisitasVirtuoso(int pNumHorasIntervalo, IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<ActualizarNumeroVisitasVirtuoso> logger, ILoggerFactory loggerFactory)
+            : base(serviceScopeFactory, configService,logger,loggerFactory)
         {
             mNumHorasIntervalo = pNumHorasIntervalo;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         #region Metodos
@@ -42,15 +48,15 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// </summary>
         public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
             GestorParametroAplicacion gestorParametroAplicacion = new GestorParametroAplicacion();
             ParametroAplicacionGBD parametroAplicacionGBD = new ParametroAplicacionGBD(loggingService, entityContext, mConfigService);
             parametroAplicacionGBD.ObtenerConfiguracionGnoss(gestorParametroAplicacion);
             mUrlIntragnoss = gestorParametroAplicacion.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
 
-            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
             DataWrapperDocumentacion docDW = docCN.ObtenerUltimosRecursosVisitados(mNumHorasIntervalo);
-            FacetadoAD facAD = new FacetadoAD(mUrlIntragnoss, loggingService, entityContext, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+            FacetadoAD facAD = new FacetadoAD(mUrlIntragnoss, loggingService, entityContext, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoAD>(), mLoggerFactory);
 
             foreach(AD.EntityModel.Models.Documentacion.DocumentoWebVinBaseRecursosExtra dwvbr in docDW.ListaDocumentoWebVinBaseRecursosExtra)
             {
@@ -73,7 +79,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new ActualizarNumeroVisitasVirtuoso(mNumHorasIntervalo, ScopedFactory, mConfigService);
+            return new ActualizarNumeroVisitasVirtuoso(mNumHorasIntervalo, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<ActualizarNumeroVisitasVirtuoso>(), mLoggerFactory);
         }
     }
 }

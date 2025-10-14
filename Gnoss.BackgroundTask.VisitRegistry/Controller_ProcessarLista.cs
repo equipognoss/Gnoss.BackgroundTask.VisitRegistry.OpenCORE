@@ -19,6 +19,8 @@ using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.CL;
 using Es.Riam.AbstractsOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
@@ -70,16 +72,20 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         private DateTime mFechaUltimaActualizacionUltimasVisitas = DateTime.Now;
         private List<string> mUltimasVisitas = new List<string>();
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
         #region Constructores
 
-        public Controller_ProcessarLista(int pNumLineasHilos, int pNumHilosAbiertos, int pMinutosAntesProcesar, List<string> mSocketsList, int pPuerto, int pHorasProcesarVisitasVirtuoso, IServiceScopeFactory serviceScopeFactory, ConfigService configService)
-            : base(serviceScopeFactory, configService)
+        public Controller_ProcessarLista(int pNumLineasHilos, int pNumHilosAbiertos, int pMinutosAntesProcesar, List<string> mSocketsList, int pPuerto, int pHorasProcesarVisitasVirtuoso, IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<Controller_ProcessarLista> logger, ILoggerFactory loggerFactory)
+            : base(serviceScopeFactory, configService, logger, loggerFactory)
         {
             this.mSocketsList = mSocketsList;
             mTaskList = new Dictionary<string, Task>();
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
 
 
             mNumLineasHilo = pNumLineasHilos;
@@ -117,7 +123,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// </summary>
         public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
             mUrlIntragnoss = GestorParametroAplicacionDS.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
 
             //Antes de hacer el mantenimiento, revisar si quedan ficheros pendientes y procesarlos.
@@ -148,7 +154,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 }
                 catch (Exception ex)
                 {
-                    loggingService.GuardarLog("UDPListener ERROR: Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace);
+                    loggingService.GuardarLog("UDPListener ERROR: Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mlogger);
                 }
                 finally
                 {
@@ -234,7 +240,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             {
                 List<string> listUltimasVisitas = new List<string>(mUltimasVisitas);
                 // Si hace más de 15 segundos que se envían visitas, envío las visitas a Sql Server
-                Task.Factory.StartNew(new Action(()=> { new Controller_ProcesarUltimosRecursosVistos(listUltimasVisitas, ScopedFactory, mConfigService).RealizarMantenimiento(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication); }));
+                Task.Factory.StartNew(new Action(()=> { new Controller_ProcesarUltimosRecursosVistos(listUltimasVisitas, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_ProcesarUltimosRecursosVistos>(), mLoggerFactory).RealizarMantenimiento(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication); }));
 
                 mUltimasVisitas.Clear();
                 mFechaUltimaActualizacionUltimasVisitas = DateTime.Now;
@@ -248,7 +254,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         {
             if (File.Exists(mDirectorioVisitas + mFicheroVisitas))
             {
-                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService);
+                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
 
                 //Obtenemos el número de líneas que tiene el fichero por si se ha vuelto a arrancar para que procese las que tenga.
                 if (utilsServicioUDP.LeerFichero(mDirectorioVisitas + mFicheroVisitas).Count != mNumSolicitudesVisitas)
@@ -259,7 +265,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             if (File.Exists(mDirectorioVotos + mFicheroVotos))
             {
-                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService);
+                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
 
                 //Obtenemos el número de líneas que tiene el fichero por si se ha vuelto a arrancar para que procese las que tenga.
                 if (utilsServicioUDP.LeerFichero(mDirectorioVotos + mFicheroVotos).Count != mNumSolicitudesVotos)
@@ -270,7 +276,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             if (File.Exists(mDirectorioComentarios + mFicheroComentarios))
             {
-                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService);
+                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
 
                 //Obtenemos el número de líneas que tiene el fichero por si se ha vuelto a arrancar para que procese las que tenga.
                 if (utilsServicioUDP.LeerFichero(mDirectorioComentarios + mFicheroComentarios).Count != mNumSolicitudesComentarios)
@@ -281,7 +287,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             if (File.Exists(mDirectorioRecursos + mFicheroRecursos))
             {
-                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService);
+                UtilsServicioUDP utilsServicioUDP = new UtilsServicioUDP(mConfigService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
 
                 //Obtenemos el número de líneas que tiene el fichero por si se ha vuelto a arrancar para que procese las que tenga.
                 if (utilsServicioUDP.LeerFichero(mDirectorioRecursos + mFicheroRecursos).Count != mNumSolicitudesRecursos)
@@ -416,7 +422,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                     {
                         ex = ex.InnerException;
                     }
-                    loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0.0.0"));
+                    loggingService.GuardarLog(loggingService.DevolverCadenaError(ex, "1.0.0.0"), mlogger);
                 }
             }
         }
@@ -477,7 +483,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             // Abrir solo 5 hilos y cuando creemos uno comprobar que se puede procesar.
             // *************************************************************************
 
-            ProcesarFichero procFich = new ProcesarFichero(ScopedFactory, mConfigService);
+            ProcesarFichero procFich = new ProcesarFichero(ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<ProcesarFichero>(), mLoggerFactory);
 
             procFich.TempFile = pFich;
             procFich.FicheroLog = mFicheroLog;
@@ -493,7 +499,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
             catch(Exception ex)
             {
-                mLoggingService.GuardarLogError(ex.Message);
+                Console.WriteLine(ex.ToString());
             }
 
             //Task t = new Task(procFich.EmpezarMantenimiento);
@@ -505,7 +511,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         {
             if (!mTaskList.ContainsKey("ActualizarVisitasVirtuoso"))
             {
-                ActualizarNumeroVisitasVirtuoso actualizarVisitasVirtuoso = new ActualizarNumeroVisitasVirtuoso(mHorasIntervaloActualizarVisitasVirtuoso, ScopedFactory, mConfigService);
+                ActualizarNumeroVisitasVirtuoso actualizarVisitasVirtuoso = new ActualizarNumeroVisitasVirtuoso(mHorasIntervaloActualizarVisitasVirtuoso, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<ActualizarNumeroVisitasVirtuoso>(), mLoggerFactory);
                 Task t = new Task(actualizarVisitasVirtuoso.EmpezarMantenimiento);
                 mTaskList.Add("ActualizarVisitasVirtuoso", t);
             }
@@ -530,7 +536,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new Controller_ProcessarLista(mNumLineasHilo, mNumHilosAbiertos, mMinutosAntesProcesar, mSocketsList, mPuerto, mHorasIntervaloActualizarVisitasVirtuoso, ScopedFactory, mConfigService);
+            return new Controller_ProcessarLista(mNumLineasHilo, mNumHilosAbiertos, mMinutosAntesProcesar, mSocketsList, mPuerto, mHorasIntervaloActualizarVisitasVirtuoso, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_ProcessarLista>(), mLoggerFactory);
         }
 
         #endregion

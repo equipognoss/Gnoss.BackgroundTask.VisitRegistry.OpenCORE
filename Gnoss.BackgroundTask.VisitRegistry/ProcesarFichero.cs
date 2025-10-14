@@ -23,6 +23,9 @@ using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
 using Es.Riam.Gnoss.Elementos.ParametroAplicacion;
 using Es.Riam.AbstractsOpen;
+using Es.Riam.Interfaces.InterfacesOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 {
@@ -40,10 +43,14 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         private object mObjErrorLock;
         private object mObjLineaLock;
-        public ProcesarFichero(IServiceScopeFactory serviceScopeFactory, ConfigService configService)
-            : base(serviceScopeFactory, configService)
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
+        public ProcesarFichero(IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<ProcesarFichero> logger, ILoggerFactory loggerFactory)
+            : base(serviceScopeFactory, configService,logger,loggerFactory)
         {
-            mUtilsServicioUDP = new UtilsServicioUDP(configService);
+            mUtilsServicioUDP = new UtilsServicioUDP(configService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         #endregion
@@ -113,48 +120,52 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// </summary>
         public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
-            GestorParametroAplicacion gestorParametroAplicacion = new GestorParametroAplicacion();
-            ParametroAplicacionGBD parametroAplicacionGBD = new ParametroAplicacionGBD(loggingService, entityContext, mConfigService);
-            parametroAplicacionGBD.ObtenerConfiguracionGnoss(gestorParametroAplicacion);
-            mUrlIntragnoss = gestorParametroAplicacion.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
-
-            try
+            using (var scope = ScopedFactory.CreateScope())
             {
-                Dictionary<Guid, DatosOfflineModel> dicDatosLinea = ObtenerListaDatosLinea(loggingService);
-                if (mTipoDatoActualizacion.Equals("Votos") || mTipoDatoActualizacion.Equals("Comentarios") || mTipoDatoActualizacion.Equals("recursos"))
-                {
-                    ProcesarRecursosVotosComentarios(dicDatosLinea, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
-                }
-                else
-                {
-                    ProcesarVisitas(dicDatosLinea, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
-                }
+				IAvailableServices availableServices = scope.ServiceProvider.GetRequiredService<IAvailableServices>();
+				ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
+				GestorParametroAplicacion gestorParametroAplicacion = new GestorParametroAplicacion();
+				ParametroAplicacionGBD parametroAplicacionGBD = new ParametroAplicacionGBD(loggingService, entityContext, mConfigService);
+				parametroAplicacionGBD.ObtenerConfiguracionGnoss(gestorParametroAplicacion);
+				mUrlIntragnoss = gestorParametroAplicacion.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
 
-                File.Delete(TempFile);
-                Controller_ProcessarLista.mNumTaskOpen--;
-                //TaskList.Remove(TempFile);
-            }
-            catch (Exception ex)
-            {
-                //Escribir en un fichero para procesarlas por la noche
-                UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
-            }
+				try
+				{
+					Dictionary<Guid, DatosOfflineModel> dicDatosLinea = ObtenerListaDatosLinea(loggingService);
+					if (mTipoDatoActualizacion.Equals("Votos") || mTipoDatoActualizacion.Equals("Comentarios") || mTipoDatoActualizacion.Equals("recursos"))
+					{
+						ProcesarRecursosVotosComentarios(dicDatosLinea, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+					}
+					else
+					{
+						ProcesarVisitas(dicDatosLinea, entityContext, loggingService, servicesUtilVirtuosoAndReplication, availableServices);
+					}
+
+					File.Delete(TempFile);
+					Controller_ProcessarLista.mNumTaskOpen--;
+					//TaskList.Remove(TempFile);
+				}
+				catch (Exception ex)
+				{
+					//Escribir en un fichero para procesarlas por la noche
+					UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+				}
+			}		    
         }
 
-        private void ProcesarVisitas(Dictionary<Guid, DatosOfflineModel> pDicDatosLinea, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void ProcesarVisitas(Dictionary<Guid, DatosOfflineModel> pDicDatosLinea, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, IAvailableServices availableServices)
         {
             // Eliminado el código de actualización de virtuoso porque se hacían demasiadas insercciones en virtuoso y los checkpoints tenían que registrar demasiadas transacciones, por lo que costaban mucho tiempo y se podía perder información.
-            loggingService.GuardarLog("2. ProcesarVisitas");
+            loggingService.GuardarLog("2. ProcesarVisitas", mlogger);
+            List<string> filasLiveAInsertar = new List<string>();
             foreach (Guid documentoID in pDicDatosLinea.Keys)
             {
                 try
                 {
-                    loggingService.GuardarLog($"2.x EncolarRabbit. Clave {documentoID}");
+                    loggingService.GuardarLog($"2.x EncolarRabbit. Clave {documentoID}", mlogger);
                     // Actualizar en BBDD la fecha de la última visita en el recurso.
+                    filasLiveAInsertar.Add(mUtilsServicioUDP.PrepararColaRabbitMQ(pDicDatosLinea[documentoID]));
                     ActualizarFechaUltimaVisitaDocumento(documentoID, pDicDatosLinea[documentoID].BaseRecursosID, pDicDatosLinea[documentoID].Fecha, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
-
-                    ProcesarSocketRecibidoLive(pDicDatosLinea[documentoID], entityContext, loggingService, servicesUtilVirtuosoAndReplication);
                     ProcesarSocketRecibidoLiveExtra(pDicDatosLinea[documentoID], entityContext, loggingService, servicesUtilVirtuosoAndReplication);
                 }
                 catch (Exception ex)
@@ -163,6 +174,8 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                     UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
                 }
             }
+            ProcesarSocketRecibidoLive(filasLiveAInsertar, entityContext, loggingService, servicesUtilVirtuosoAndReplication, availableServices);
+
         }
 
         private void ProcesarRecursosVotosComentarios(Dictionary<Guid, DatosOfflineModel> pDicDatosLinea, EntityContext entityContext, LoggingService loggingService, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
@@ -228,11 +241,11 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         {
             List<string> visitas = UtilsServicioUDP.LeerFichero(TempFile);
             Dictionary<Guid, DatosOfflineModel> dicDatosOffline = new Dictionary<Guid, DatosOfflineModel>();
-            loggingService.GuardarLog($"1. ObtenerListaDatosLinea. Ruta fichero temporal {TempFile} Existe {File.Exists(TempFile)}");
+            loggingService.GuardarLog($"1. ObtenerListaDatosLinea. Ruta fichero temporal {TempFile} Existe {File.Exists(TempFile)}", mlogger);
             char[] separator = { '|' };
             foreach (string visita in visitas)
             {
-                loggingService.GuardarLog($"1.x Visita {visita}");
+                loggingService.GuardarLog($"1.x Visita {visita}", mlogger);
                 try
                 {
                     Guid documentoID = Guid.Empty;
@@ -292,7 +305,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 }
                 catch (Exception ex)
                 {
-                    loggingService.GuardarLog("Fichero: " + TempFile + ". Linea: " + visita + ". \r\n" + loggingService.DevolverCadenaError(ex, "1.0.0.0"));
+                    loggingService.GuardarLog("Fichero: " + TempFile + ". Linea: " + visita + ". \r\n" + loggingService.DevolverCadenaError(ex, "1.0.0.0"), mlogger);
                     throw;
                 }
             }
@@ -323,17 +336,17 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         private void ActualizarFechaUltimaVisitaDocumento(Guid pDocumentoID, Guid pBaseRecursosID, DateTime pFechaUltimaVisita, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
             docCN.ActualizarFechaUltimaVisitaDocumento(pDocumentoID, pBaseRecursosID, pFechaUltimaVisita);
             docCN.Dispose();
         }
 
-        private void ProcesarSocketRecibidoBase(DatosOfflineModel pDatosOffline,EntityContext entityContext, LoggingService loggingService, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void ProcesarSocketRecibidoBase(DatosOfflineModel pDatosOffline, EntityContext entityContext, LoggingService loggingService, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             try
             {
                 //Actualizacion del modelo Base
-                UtilsServicioUDP.ActualizacionVirtuoso(pDatosOffline.ProyectoID, pDatosOffline.DocumentoID, pDatosOffline.IdentidadCreadorID, mUrlIntragnoss, pDatosOffline.NumeroDeVisitas, mTipoDatoActualizacion,entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                UtilsServicioUDP.ActualizacionVirtuoso(pDatosOffline.ProyectoID, pDatosOffline.DocumentoID, pDatosOffline.IdentidadCreadorID, mUrlIntragnoss, pDatosOffline.NumeroDeVisitas, mTipoDatoActualizacion, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
             }
             catch (Exception ex)
             {
@@ -347,23 +360,18 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
         }
 
-        private void ProcesarSocketRecibidoLive(DatosOfflineModel pDatosOffline, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void ProcesarSocketRecibidoLive(List<string> pFilasLiveAInsertar, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, IAvailableServices availableServices)
         {
             try
             {
                 //Actualización del modelo Live
                 //Actualizar el número de consultas al documento.
-                UtilsServicioUDP.ActualizarGnossLive(pDatosOffline.ProyectoID, pDatosOffline.DocumentoID, AccionLive.VisitaRecurso, (int)TipoLive.Recurso, false, mFicheroConfiguracionBDBase, PrioridadLive.Media, pDatosOffline.BaseRecursosID.ToString() + "|" + "NumVisitas=" + pDatosOffline.NumeroDeVisitas, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
-
-                //BaseComunidadCN baseComunidadCN = new BaseComunidadCN(mFicheroConfiguracionBDBase, false);
-                //baseComunidadCN.InsertarFilaEnColaRefrescoCache(proyectoSeleccionadoID, TiposEventosRefrescoCache.ModificarCaducidadCache, TipoBusqueda.Recursos, docID.ToString());
-                //baseComunidadCN.Dispose();
+                UtilsServicioUDP.ActualizarGnossLive(pFilasLiveAInsertar, mFicheroConfiguracionBDBase, entityContext, loggingService, servicesUtilVirtuosoAndReplication, availableServices);
             }
             catch (Exception ex)
             {
                 //Aumentamos en 1 el número de solicitudes erroneas
                 UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
-                UtilsServicioUDP.GuardarLineaErronea(pDatosOffline.DocumentoID, mFicheroLog, ObjLineaLock);
             }
             finally
             {
@@ -394,7 +402,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new ProcesarFichero(ScopedFactory, mConfigService);
+            return new ProcesarFichero(ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<ProcesarFichero>(), mLoggerFactory);
         }
     }
 }
