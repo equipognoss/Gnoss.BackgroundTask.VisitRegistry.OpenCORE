@@ -9,13 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl
 
 WORKDIR /app
 
-COPY Gnoss.BackgroundTask.VisitRegistry/*.csproj ./
-
-RUN dotnet restore
-
 COPY . ./
 
-RUN dotnet publish Gnoss.BackgroundTask.VisitRegistry/Gnoss.BackgroundTask.VisitRegistry.csproj -c Release -o out
+RUN dotnet restore Gnoss.BackgroundTask.VisitRegistry.OpenCORE/Gnoss.BackgroundTask.VisitRegistry/Gnoss.BackgroundTask.VisitRegistry.csproj
+
+RUN dotnet publish Gnoss.BackgroundTask.VisitRegistry.OpenCORE/Gnoss.BackgroundTask.VisitRegistry/Gnoss.BackgroundTask.VisitRegistry.csproj -c Release -o out
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
