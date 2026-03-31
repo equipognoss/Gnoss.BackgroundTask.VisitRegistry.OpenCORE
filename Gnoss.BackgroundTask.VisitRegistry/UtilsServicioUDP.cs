@@ -124,59 +124,6 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
         #region Métodos de Log
 
-        /// <summary>
-        /// Escribe fisicamente las entradas en el log
-        /// </summary>
-        /// <param name="infoEntry"></param>
-        public void GuardarLogYEnviarCorreo(string pInfoEntry, string pFicheroLog, object pObjectLock)
-        {
-            StreamWriter logWriter = null;
-            FileStream logFile = null;
-            try
-            {
-                //Bloqueamos el objeto que nos pasan para que ningún otro hilo pueda escribir en el fichero y tenga que esperar.
-                lock (pObjectLock)
-                {
-                    if (pInfoEntry != String.Empty)
-                    {
-                        string nombreFichero = pFicheroLog + "_" + DateTime.Now.ToString("yyyy-MM-dd") + ".log";
-                        // File access and writing
-                        if (File.Exists(nombreFichero))
-                        {
-                            logFile = new FileStream(nombreFichero, FileMode.Append, FileAccess.Write);
-                        }
-                        else
-                        {
-                            logFile = new FileStream(nombreFichero, FileMode.Create, FileAccess.Write);
-                        }
-                        logWriter = new StreamWriter(logFile, Encoding.UTF8);
-
-                        // Log entry
-                        CultureInfo culture = new CultureInfo(CultureInfo.CurrentCulture.ToString());
-                        String logEntry = DateTime.Now.ToString(@"yyyy-MM-dd HH:mm:ss", culture) + " " + pInfoEntry;
-                        logWriter.WriteLine(logEntry);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                //Se ha producido un error al guardar la excepción. Lo guardamos en otro fichero:
-            }
-            finally
-            {
-                if (logWriter != null)
-                {
-                    logWriter.Dispose();
-                    logWriter.Close();
-                }
-                if (logFile != null)
-                {
-                    logFile.Dispose();
-                    logFile.Close();
-                }
-            }
-        }
-
         internal void GuardarLineaErronea(Guid datos, string pFicheroLog, object pObjectLock)
         {
             StreamWriter pSw = null;

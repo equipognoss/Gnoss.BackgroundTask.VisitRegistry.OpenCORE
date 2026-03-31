@@ -147,8 +147,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 				}
 				catch (Exception ex)
 				{
-					//Escribir en un fichero para procesarlas por la noche
-					UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+					loggingService.GuardarLogError(ex, mLogger);
 				}
 			}		    
         }
@@ -170,8 +169,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 }
                 catch (Exception ex)
                 {
-                    //Escribir en un fichero para procesarlas por la noche
-                    UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+                    loggingService.GuardarLogError(ex, mLogger);
                 }
             }
             ProcesarSocketRecibidoLive(filasLiveAInsertar, entityContext, loggingService, servicesUtilVirtuosoAndReplication, availableServices);
@@ -188,8 +186,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 }
                 catch (Exception ex)
                 {
-                    //Escribir en un fichero para procesarlas por la noche
-                    UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+                    loggingService.GuardarLogError(ex, mLogger);
                 }
             }
 
@@ -351,7 +348,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             catch (Exception ex)
             {
                 //Aumentamos en 1 el número de solicitudes erroneas
-                UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+                loggingService.GuardarLogError(ex, mLogger);
                 UtilsServicioUDP.GuardarLineaErronea(pDatosOffline.DocumentoID, mFicheroLog, ObjLineaLock);
             }
             finally
@@ -371,7 +368,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             catch (Exception ex)
             {
                 //Aumentamos en 1 el número de solicitudes erroneas
-                UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+                loggingService.GuardarLogError(ex, mLogger);
             }
             finally
             {
@@ -389,7 +386,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             catch (Exception ex)
             {
                 //Aumentamos en 1 el número de solicitudes erroneas
-                UtilsServicioUDP.GuardarLogYEnviarCorreo("ERROR:  Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace, mFicheroLog, ObjErrorLock);
+                loggingService.GuardarLogError(ex, mLogger);
                 UtilsServicioUDP.GuardarLineaErronea(pDatosOffline.DocumentoID, mFicheroLog, ObjLineaLock);
             }
             finally
