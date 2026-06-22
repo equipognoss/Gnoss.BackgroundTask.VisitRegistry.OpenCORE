@@ -33,83 +33,32 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
     {
         #region Miembros
 
-        private string mTempFile;
+        private readonly ILogger mlogger;
+        private readonly ILoggerFactory mLoggerFactory;
 
-        private UtilsServicioUDP mUtilsServicioUDP;
-
-        private string mTipoDatoActualizacion = "";
-
-        private string mFicheroLog;
-
-        private object mObjErrorLock;
-        private object mObjLineaLock;
-        private ILogger mlogger;
-        private ILoggerFactory mLoggerFactory;
         public ProcesarFichero(IServiceScopeFactory serviceScopeFactory, ConfigService configService, ILogger<ProcesarFichero> logger, ILoggerFactory loggerFactory)
             : base(serviceScopeFactory, configService,logger,loggerFactory)
         {
-            mUtilsServicioUDP = new UtilsServicioUDP(configService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
-            mlogger = logger;
             mLoggerFactory = loggerFactory;
+            UtilsServicioUDP = new UtilsServicioUDP(configService, mLoggerFactory.CreateLogger<UtilsServicioUDP>(), mLoggerFactory);
+            mlogger = logger;
         }
 
         #endregion
 
         #region Propiedades
 
-        public string TempFile
-        {
-            get
-            {
-                return mTempFile;
-            }
-            set
-            {
-                mTempFile = value;
-            }
-        }
+        public string TempFile { get; set; }
 
-        internal UtilsServicioUDP UtilsServicioUDP
-        {
-            get { return mUtilsServicioUDP; }
-            set { mUtilsServicioUDP = value; }
-        }
+        internal UtilsServicioUDP UtilsServicioUDP { get; set; }
 
-        public string TipoDatoActualizacion
-        {
-            get { return mTipoDatoActualizacion; }
-            set { mTipoDatoActualizacion = value; }
-        }
+        public string TipoDatoActualizacion { get; set; } = string.Empty;
 
-        public string FicheroLog
-        {
-            get { return mFicheroLog; }
-            set { mFicheroLog = value; }
-        }
+        public string FicheroLog { get; set; }
 
-        public object ObjErrorLock
-        {
-            get
-            {
-                return mObjErrorLock;
-            }
-            set
-            {
-                mObjErrorLock = value;
-            }
-        }
+        public object ObjErrorLock { get; set; }
 
-        public object ObjLineaLock
-        {
-            get
-            {
-                return mObjLineaLock;
-            }
-            set
-            {
-                mObjLineaLock = value;
-            }
-        }
+        public object ObjLineaLock {  get; set; }
 
         #endregion
 
@@ -132,7 +81,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 				try
 				{
 					Dictionary<Guid, DatosOfflineModel> dicDatosLinea = ObtenerListaDatosLinea(loggingService);
-					if (mTipoDatoActualizacion.Equals("Votos") || mTipoDatoActualizacion.Equals("Comentarios") || mTipoDatoActualizacion.Equals("recursos"))
+					if (TipoDatoActualizacion.Equals("Votos") || TipoDatoActualizacion.Equals("Comentarios") || TipoDatoActualizacion.Equals("recursos"))
 					{
 						ProcesarRecursosVotosComentarios(dicDatosLinea, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
 					}
@@ -142,8 +91,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 					}
 
 					File.Delete(TempFile);
-					Controller_ProcessarLista.mNumTaskOpen--;
-					//TaskList.Remove(TempFile);
+					Controller_ProcessarLista.mNumTaskOpen--;					
 				}
 				catch (Exception ex)
 				{
@@ -163,7 +111,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                 {
                     loggingService.GuardarLog($"2.x EncolarRabbit. Clave {documentoID}", mlogger);
                     // Actualizar en BBDD la fecha de la última visita en el recurso.
-                    filasLiveAInsertar.Add(mUtilsServicioUDP.PrepararColaRabbitMQ(pDicDatosLinea[documentoID]));
+                    filasLiveAInsertar.Add(UtilsServicioUDP.PrepararColaRabbitMQ(pDicDatosLinea[documentoID]));
                     ActualizarFechaUltimaVisitaDocumento(documentoID, pDicDatosLinea[documentoID].BaseRecursosID, pDicDatosLinea[documentoID].Fecha, entityContext, loggingService, servicesUtilVirtuosoAndReplication);
                     ProcesarSocketRecibidoLiveExtra(pDicDatosLinea[documentoID], entityContext, loggingService, servicesUtilVirtuosoAndReplication);
                 }
@@ -343,7 +291,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             try
             {
                 //Actualizacion del modelo Base
-                UtilsServicioUDP.ActualizacionVirtuoso(pDatosOffline.ProyectoID, pDatosOffline.DocumentoID, pDatosOffline.IdentidadCreadorID, mUrlIntragnoss, pDatosOffline.NumeroDeVisitas, mTipoDatoActualizacion, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                UtilsServicioUDP.ActualizacionVirtuoso(pDatosOffline.ProyectoID, pDatosOffline.DocumentoID, pDatosOffline.IdentidadCreadorID, mUrlIntragnoss, pDatosOffline.NumeroDeVisitas, TipoDatoActualizacion, entityContext, loggingService, virtuosoAD, servicesUtilVirtuosoAndReplication);
             }
             catch (Exception ex)
             {
