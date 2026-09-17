@@ -67,7 +67,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <summary>
         /// Procesa las visitas escritas en el fichero. Las agrupa y las procesa.
         /// </summary>
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             using (var scope = ScopedFactory.CreateScope())
             {
@@ -77,8 +77,8 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 				ParametroAplicacionGBD parametroAplicacionGBD = new ParametroAplicacionGBD(loggingService, entityContext, mConfigService);
 				parametroAplicacionGBD.ObtenerConfiguracionGnoss(gestorParametroAplicacion);
 				mUrlIntragnoss = gestorParametroAplicacion.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
-
-				try
+                VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory);
+                try
 				{
 					Dictionary<Guid, DatosOfflineModel> dicDatosLinea = ObtenerListaDatosLinea(loggingService);
 					if (TipoDatoActualizacion.Equals("Votos") || TipoDatoActualizacion.Equals("Comentarios") || TipoDatoActualizacion.Equals("recursos"))

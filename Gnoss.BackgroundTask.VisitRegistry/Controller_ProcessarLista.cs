@@ -121,7 +121,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <summary>
         /// Procesa las solicitudes TCP que hay almacenadas en la lista
         /// </summary>
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
             mUrlIntragnoss = GestorParametroAplicacionDS.ParametroAplicacion.Find(parametroApp => parametroApp.Parametro.Equals("UrlIntragnoss")).Valor;
@@ -145,7 +145,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
                     //ArrancadoDeHilosNuevos(loggingService);
 
                     //Comprueba si hay elementos pendientes en la lista compartida con el otro hilo y los escribe en un fichero
-                    AgregarFilasNuevas_Fichero(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication);
+                    AgregarFilasNuevas_Fichero(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, servicesUtilVirtuosoAndReplication);
                 }
                 catch (OperationCanceledException)
                 {
@@ -186,9 +186,9 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
         }
 
-        private void AgregarFilasNuevas_Fichero(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void AgregarFilasNuevas_Fichero(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
-            ProcesarUltimasVisitas(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication);
+            ProcesarUltimasVisitas(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, servicesUtilVirtuosoAndReplication);
 
             if (this.mSocketsList.Count > 0)
             {
@@ -234,13 +234,13 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
             }
         }
 
-        private void ProcesarUltimasVisitas(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void ProcesarUltimasVisitas(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             if (DateTime.Now.Subtract(mFechaUltimaActualizacionUltimasVisitas).TotalSeconds > 15 && mUltimasVisitas.Count > 0)
             {
                 List<string> listUltimasVisitas = new List<string>(mUltimasVisitas);
                 // Si hace más de 15 segundos que se envían visitas, envío las visitas a Sql Server
-                Task.Factory.StartNew(new Action(()=> { new Controller_ProcesarUltimosRecursosVistos(listUltimasVisitas, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_ProcesarUltimosRecursosVistos>(), mLoggerFactory).RealizarMantenimiento(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, virtuosoAD, servicesUtilVirtuosoAndReplication); }));
+                Task.Factory.StartNew(new Action(()=> { new Controller_ProcesarUltimosRecursosVistos(listUltimasVisitas, ScopedFactory, mConfigService, mLoggerFactory.CreateLogger<Controller_ProcesarUltimosRecursosVistos>(), mLoggerFactory).RealizarMantenimiento(entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, redisCacheWrapper, gnossCache, servicesUtilVirtuosoAndReplication); }));
 
                 mUltimasVisitas.Clear();
                 mFechaUltimaActualizacionUltimasVisitas = DateTime.Now;

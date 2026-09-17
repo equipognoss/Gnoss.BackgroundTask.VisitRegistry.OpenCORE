@@ -46,7 +46,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
         /// <summary>
         /// Procesa las visitas escritas en el fichero. Las agrupa y las procesa.
         /// </summary>
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             ParametroAplicacionCN paramCN = new ParametroAplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ParametroAplicacionCN>(), mLoggerFactory);
             GestorParametroAplicacion gestorParametroAplicacion = new GestorParametroAplicacion();
@@ -56,6 +56,7 @@ namespace Es.Riam.Gnoss.ServicioActualizacionOffline
 
             DocumentacionCN docCN = new DocumentacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<DocumentacionCN>(), mLoggerFactory);
             DataWrapperDocumentacion docDW = docCN.ObtenerUltimosRecursosVisitados(mNumHorasIntervalo);
+            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory);
             FacetadoAD facAD = new FacetadoAD(mUrlIntragnoss, loggingService, entityContext, mConfigService, virtuosoAD, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<FacetadoAD>(), mLoggerFactory);
 
             foreach(AD.EntityModel.Models.Documentacion.DocumentoWebVinBaseRecursosExtra dwvbr in docDW.ListaDocumentoWebVinBaseRecursosExtra)
